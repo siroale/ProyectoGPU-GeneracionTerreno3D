@@ -3,10 +3,13 @@ Generación de terreno 3D usando Perlin Noise
 
 # Instalar CUDA y librerias de Opengl
 CUDA:
-`sudo apt-get update`
-`sudo apt-get upgrade -y`
-`sudo apt-get install build-essential cmake -y`
-`sudo apt-get install nvidia-cuda-toolkit -y`
+```
+sudo apt-get update
+sudo apt-get upgrade -y
+sudo apt-get install build-essential cmake -y
+sudo apt-get install nvidia-cuda-toolkit -y
+```
+
 Librerias de OpenGL:
 `sudo apt-get install libglfw3-dev libglew-dev libglm-dev -y`
 
