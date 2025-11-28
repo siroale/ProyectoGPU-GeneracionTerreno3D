@@ -1,0 +1,3 @@
+/home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/CMakeFiles/TerrenoCUDA.dir
+/home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/CMakeFiles/edit_cache.dir
+/home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/CMakeFiles/rebuild_cache.dir
