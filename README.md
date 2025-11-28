@@ -15,7 +15,9 @@ Librerias de OpenGL:
 sudo apt-get install libglfw3-dev libglew-dev libglm-dev -y
 ```
 # Compilación
-Asegurarse de estar dentro de la carpeta `/build`, y ejecutar el comando `make`
+Asegurarse de estar dentro de la carpeta `/build`, borrar todo con `rm -rf *` y crear configuración para tu pc con `cmake ..`  
+
+Ejecutar el comando `make` para compilar.
 
 Ejecutar con `./TerrenoCUDA`
 
