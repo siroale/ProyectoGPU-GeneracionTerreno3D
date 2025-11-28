@@ -11,8 +11,9 @@ sudo apt-get install nvidia-cuda-toolkit -y
 ```
 
 Librerias de OpenGL:
-`sudo apt-get install libglfw3-dev libglew-dev libglm-dev -y`
-
+```
+sudo apt-get install libglfw3-dev libglew-dev libglm-dev -y
+```
 # Compilación
 Asegurarse de estar dentro de la carpeta `/build`, y ejecutar el comando `make`
 
