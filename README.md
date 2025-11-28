@@ -15,7 +15,7 @@ Asegurarse de estar dentro de la carpeta `/build`, y ejecutar el comando `make`
 
 Ejecutar con `./TerrenoCUDA`
 
-# Errores comunes:
+# Configuración importante:
 En el archivo de configuración `CMakeLists.txt` en la linea 9, se debe ajustar el número segun la tarjeta gráfica que tengas.
 RTX 4000 series (4060, 4070...): Cambiar por 89
 
