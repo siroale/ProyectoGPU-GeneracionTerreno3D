@@ -1,0 +1,3 @@
+/home/moon/gpu/ProyectoGPU-GeneracionTerreno3D/build/_deps/imgui-subbuild/CMakeFiles/imgui-populate.dir
+/home/moon/gpu/ProyectoGPU-GeneracionTerreno3D/build/_deps/imgui-subbuild/CMakeFiles/edit_cache.dir
+/home/moon/gpu/ProyectoGPU-GeneracionTerreno3D/build/_deps/imgui-subbuild/CMakeFiles/rebuild_cache.dir
