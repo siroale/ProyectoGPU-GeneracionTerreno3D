@@ -180,4 +180,5 @@ CMakeFiles/TerrenoCUDA.dir/kernel.cu.o : /home/moon/gpu/ProyectoGPU-GeneracionTe
     /usr/include/c++/12/utility \
     /usr/include/c++/12/bits/stl_relops.h \
     /usr/include/c++/12/initializer_list \
-    /home/moon/gpu/ProyectoGPU-GeneracionTerreno3D/kernel.h
+    /home/moon/gpu/ProyectoGPU-GeneracionTerreno3D/kernel.h \
+    /home/moon/gpu/ProyectoGPU-GeneracionTerreno3D/tables.h
