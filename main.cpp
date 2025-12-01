@@ -11,8 +11,9 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 
-GLuint vbo;
+GLuint vbo, ibo, treeVbo;
 std::vector<Vertex> host_buffer;
+std::vector<unsigned int> indices;
 
 // Variables Globales
 TerrainParams params;
@@ -20,6 +21,7 @@ float camAngleY = 0.0f;
 float camZoom = -1.8f;
 bool autoRotate = true;
 float daySpeed = 0.0f; 
+bool wireframeMode = false;
 
 // --- FUNCIÓN AUXILIAR PARA MEZCLAR COLORES (LERP) ---
 float3 lerpColor(float3 a, float3 b, float t) {
@@ -31,12 +33,54 @@ float3 lerpColor(float3 a, float3 b, float t) {
     };
 }
 
+void generateIndices() {
+    indices.clear();
+    indices.reserve(NUM_INDICES);
+    
+    // Generamos índices para formar quads con 2 triángulos cada uno
+    for (unsigned int y = 0; y < MESH_HEIGHT - 1; y++) {
+        for (unsigned int x = 0; x < MESH_WIDTH - 1; x++) {
+            unsigned int topLeft = y * MESH_WIDTH + x;
+            unsigned int topRight = topLeft + 1;
+            unsigned int bottomLeft = (y + 1) * MESH_WIDTH + x;
+            unsigned int bottomRight = bottomLeft + 1;
+            
+            // Primer triángulo (superior izquierdo)
+            indices.push_back(topLeft);
+            indices.push_back(bottomLeft);
+            indices.push_back(topRight);
+            
+            // Segundo triángulo (inferior derecho)
+            indices.push_back(topRight);
+            indices.push_back(bottomLeft);
+            indices.push_back(bottomRight);
+        }
+    }
+}
+
 void initGL() {
+    // VBO para terreno
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    unsigned int size = TOTAL_VERTICES * sizeof(Vertex);
+    unsigned int size = NUM_TERRAIN_POINTS * sizeof(Vertex);
     glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+    
+    // IBO para índices
+    generateIndices();
+    glGenBuffers(1, &ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), 
+                 indices.data(), GL_STATIC_DRAW);
+    
+    // VBO para árboles (siguen siendo puntos)
+    glGenBuffers(1, &treeVbo);
+    glBindBuffer(GL_ARRAY_BUFFER, treeVbo);
+    size = NUM_TERRAIN_POINTS * sizeof(Vertex);
+    glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+    
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST); 
@@ -44,7 +88,7 @@ void initGL() {
 
 int main() {
     if (!glfwInit()) return -1;
-    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno Pro - Configuracion Personalizada", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno Pro - Malla de Triángulos", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
@@ -64,28 +108,26 @@ int main() {
     params.globalX = 0.0f;
     params.globalZ = 0.0f;
     
-    params.waterLevel = -0.350f;    // Nivel Agua
-    params.scale = 2.133f;         // Zoom (Escala)
-    params.heightMult = 0.913f;    // Altura Montaña
-    params.octaves = 8;            // Detalle
+    params.waterLevel = -0.350f;
+    params.scale = 2.133f;
+    params.heightMult = 0.913f;
+    params.octaves = 8;
     
-    // Configuración de Tiempo y Cámara:
-    params.time = 3.14159f;        // 12.0h (Mediodía exacto)
-    daySpeed = 1.622f;             // Velocidad Dia (Quieto)
-    params.enableShadows = 1;      // Sombras Reales (Activado)
+    params.time = 3.14159f;
+    daySpeed = 1.622f;
+    params.enableShadows = 1;
     
-    autoRotate = true;            // Auto-Giro (Desactivado)
-    camZoom = -1.330f;            // Zoom Camara
+    autoRotate = true;
+    camZoom = -1.330f;
 
     // Colores base
     float3 colNight  = {0.40f, 0.70f, 0.90f};
     float3 colSunset = {0.40f, 0.70f, 0.90f}; 
-    float3 colDay    = {0.40f, 0.70f, 0.90f};  
+    float3 colDay    = {0.40f, 0.70f, 0.90f};
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        // suavidad
         params.time += daySpeed * 0.01f;
         
         // Mover el sol
@@ -98,10 +140,8 @@ int main() {
         float3 currentSky;
 
         if (sunHeight > 0.0f) {
-            // Día
             currentSky = lerpColor(colSunset, colDay, sunHeight * 1.5f);
         } else {
-            // Noche
             currentSky = lerpColor(colSunset, colNight, -sunHeight * 3.0f);
         }
 
@@ -139,6 +179,7 @@ int main() {
         if (ImGui::CollapsingHeader("Navegacion", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Checkbox("Auto-Giro", &autoRotate);
             ImGui::SliderFloat("Zoom Camara", &camZoom, -5.0f, -0.1f);
+            ImGui::Checkbox("Modo Wireframe", &wireframeMode);
             if (ImGui::Button("Reestablecer Posicion")) { params.globalX = 0; params.globalZ = 0; }
         }
         ImGui::End();
@@ -154,31 +195,52 @@ int main() {
         // RENDER
         runCudaKernel(host_buffer.data(), params);
 
+        // Actualizar VBO del terreno
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, host_buffer.size() * sizeof(Vertex), host_buffer.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_TERRAIN_POINTS * sizeof(Vertex), host_buffer.data());
+        
+        // Actualizar VBO de árboles
+        glBindBuffer(GL_ARRAY_BUFFER, treeVbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_TERRAIN_POINTS * sizeof(Vertex), 
+                       host_buffer.data() + NUM_TERRAIN_POINTS);
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glMatrixMode(GL_PROJECTION); glLoadIdentity();
+        glMatrixMode(GL_PROJECTION); 
+        glLoadIdentity();
         float viewSize = -camZoom; 
         glOrtho(-viewSize, viewSize, -viewSize, viewSize, -10.0, 10.0); 
         
-        glMatrixMode(GL_MODELVIEW); glLoadIdentity();
+        glMatrixMode(GL_MODELVIEW); 
+        glLoadIdentity();
         glRotatef(35.0f, 1.0f, 0.0f, 0.0f); 
         glRotatef(camAngleY, 0.0f, 1.0f, 0.0f);
 
+        // Renderizar terreno con triángulos
+        glPolygonMode(GL_FRONT_AND_BACK, wireframeMode ? GL_LINE : GL_FILL);
+        
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_COLOR_ARRAY);
+        
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glVertexPointer(4, GL_FLOAT, sizeof(Vertex), (void*)0);
         glColorPointer(4, GL_FLOAT, sizeof(Vertex), (void*)(4 * sizeof(float)));
         
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        
+        // Renderizar árboles como puntos
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glBindBuffer(GL_ARRAY_BUFFER, treeVbo);
+        glVertexPointer(4, GL_FLOAT, sizeof(Vertex), (void*)0);
+        glColorPointer(4, GL_FLOAT, sizeof(Vertex), (void*)(4 * sizeof(float)));
         glPointSize(3.0f);
-        glDrawArrays(GL_POINTS, 0, TOTAL_VERTICES);
+        glDrawArrays(GL_POINTS, 0, NUM_TERRAIN_POINTS);
 
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_COLOR_ARRAY);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -191,6 +253,8 @@ int main() {
     ImGui::DestroyContext();
     cleanupCudaMemory();
     glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ibo);
+    glDeleteBuffers(1, &treeVbo);
     glfwTerminate();
     return 0;
 }

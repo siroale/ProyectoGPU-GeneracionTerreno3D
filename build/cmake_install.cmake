@@ -1,4 +1,4 @@
-# Install script for directory: /home/moon/gpu/ProyectoGPU-GeneracionTerreno3D
+# Install script for directory: /home/ale/Github/ProyectoGPU-GeneracionTerreno3D
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/moon/gpu/ProyectoGPU-GeneracionTerreno3D/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
