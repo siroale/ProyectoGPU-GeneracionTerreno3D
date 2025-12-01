@@ -6,7 +6,7 @@
 #include <algorithm> 
 #include <chrono> // Para medir el tiempo
 
-// Incluimos la version CPU en vez de la GPU
+// Usamos el header de CPU
 #include "cpu_kernel.h"
 
 #include "imgui.h"
@@ -24,7 +24,7 @@ bool autoRotate = true;
 float daySpeed = 0.0f; 
 bool wireframeMode = false;
 
-// Variable para guardar el tiempo de CPU
+// Variable para guardar el tiempo de CPU actual
 float cpuTimeMs = 0.0f;
 
 void generateIndices() {
@@ -72,11 +72,11 @@ void initGL() {
 
 int main() {
     if (!glfwInit()) return -1;
-    // Cambiamos el título
-    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno 3D - VERSION CPU (Lenta)", NULL, NULL);
+    // Título específico para no confundirse
+    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno 3D - CPU Benchmark", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(0); // Desactivar VSync para ver los FPS reales (bajos)
+    glfwSwapInterval(0); // VSync desactivado para ver los FPS reales (aunque sean bajos)
     if (glewInit() != GLEW_OK) return -1;
 
     IMGUI_CHECKVERSION();
@@ -86,8 +86,7 @@ int main() {
     ImGui_ImplOpenGL3_Init("#version 130");
 
     initGL();
-    // Ya no hay initCudaMemory()
-    
+    // NO llamamos a initCudaMemory() aquí
     host_buffer.resize(NUM_TERRAIN_POINTS);
 
     params.globalX = 0.0f;
@@ -109,6 +108,12 @@ int main() {
     float colSunset[3] = {0.40f, 0.70f, 0.90f}; 
     float colDay[3]    = {0.40f, 0.70f, 0.90f};
 
+    // --- VARIABLES PARA PROMEDIO ---
+    double sumFPS = 0.0;
+    double sumTime = 0.0;
+    long frameCounter = 0;
+    long warmupFrames = 60; // Ignorar el primer segundo
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -121,7 +126,7 @@ int main() {
 
         float sunHeight = params.sunDir.y;
         
-        // Lerp simple para el cielo en main
+        // Lerp manual para CPU
         float t = std::max(0.0f, std::min(sunHeight * 1.5f, 1.0f));
         if (sunHeight > 0.0f) {
              params.skyColor.x = colSunset[0] + (colDay[0] - colSunset[0]) * t;
@@ -140,12 +145,17 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Benchmark CPU");
-        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-        
-        // MOSTRAR TIEMPO DE CPU EN ROJO
+        ImGui::Begin("Panel de Control (CPU)");
+        ImGui::Text("FPS Actual: %.1f", ImGui::GetIO().Framerate);
+        // Texto en ROJO para indicar que es CPU (lento)
         ImGui::TextColored(ImVec4(1,0,0,1), "Tiempo Generacion CPU: %.2f ms", cpuTimeMs);
-        ImGui::Text("Puntos totales: %d", NUM_TERRAIN_POINTS);
+        
+        // Estado del Benchmark
+        if (frameCounter > warmupFrames) {
+            ImGui::TextColored(ImVec4(1,1,0,1), "Grabando datos... (%ld samples)", frameCounter - warmupFrames);
+        } else {
+            ImGui::Text("Calentando motor... (%ld/%ld)", frameCounter, warmupFrames);
+        }
         
         if (ImGui::CollapsingHeader("Atmosfera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Velocidad Dia", &daySpeed, 0.0f, 2.0f);
@@ -159,11 +169,6 @@ int main() {
             ImGui::SliderInt("Detalle (Costoso)", &params.octaves, 1, 8);
         }
 
-        if (ImGui::CollapsingHeader("Navegacion", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Checkbox("Auto-Giro", &autoRotate);
-            ImGui::SliderFloat("Zoom Camara", &camZoom, -5.0f, -0.1f);
-            ImGui::Checkbox("Modo Wireframe", &wireframeMode);
-        }
         ImGui::End();
 
         float speed = 0.03f * params.scale;
@@ -184,7 +189,14 @@ int main() {
         cpuTimeMs = duration.count();
         // --- BENCHMARK END ---
 
-        // Actualizar VBO del terreno
+        // --- ACUMULAR DATOS ---
+        if (frameCounter > warmupFrames) {
+            sumFPS += ImGui::GetIO().Framerate;
+            sumTime += cpuTimeMs;
+        }
+        frameCounter++;
+        // ---------------------
+
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_TERRAIN_POINTS * sizeof(Vertex), host_buffer.data());
         
@@ -200,7 +212,6 @@ int main() {
         glRotatef(35.0f, 1.0f, 0.0f, 0.0f); 
         glRotatef(camAngleY, 0.0f, 1.0f, 0.0f);
 
-        // Renderizar terreno
         glPolygonMode(GL_FRONT_AND_BACK, wireframeMode ? GL_LINE : GL_FILL);
         
         glEnableClientState(GL_VERTEX_ARRAY);
@@ -224,10 +235,28 @@ int main() {
         glfwSwapBuffers(window);
     }
 
+    // --- AL CERRAR: IMPRIMIR REPORTE CPU ---
+    long samples = frameCounter - warmupFrames;
+    if (samples > 0) {
+        double avgFPS = sumFPS / samples;
+        double avgTime = sumTime / samples;
+        
+        std::cout << "\n============================================\n";
+        std::cout << "      RESULTADOS DEL BENCHMARK (CPU)      \n";
+        std::cout << "============================================\n";
+        std::cout << " Frames Totales:    " << frameCounter << "\n";
+        std::cout << " Frames Analizados: " << samples << "\n";
+        std::cout << "--------------------------------------------\n";
+        std::cout << " FPS Promedio:      " << avgFPS << " FPS\n";
+        std::cout << " Tiempo Promedio:   " << avgTime << " ms/frame\n";
+        std::cout << "============================================\n\n";
+    } else {
+        std::cout << "\n[!] Cerraste el programa demasiado rapido.\n";
+    }
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    // cleanupCudaMemory() ya no es necesario
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &ibo);
     glfwTerminate();
