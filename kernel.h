@@ -7,13 +7,8 @@
 #define NUM_TERRAIN_POINTS (MESH_WIDTH * MESH_HEIGHT)
 #define TOTAL_VERTICES (NUM_TERRAIN_POINTS * 2)
 
-// Número de triángulos: cada quad = 2 triángulos, y hay (W-1)*(H-1) quads
 #define NUM_QUADS ((MESH_WIDTH - 1) * (MESH_HEIGHT - 1))
-#define NUM_INDICES (NUM_QUADS * 6)  // 6 índices por quad (2 triángulos)
-
-// Geometría de árbol simple: tronco (8 vértices) + copa (5 vértices)
-#define TREE_VERTICES_PER_TREE 13
-#define MAX_TREES 4096
+#define NUM_INDICES (NUM_QUADS * 6)
 
 struct TerrainParams {
     float time;
@@ -35,13 +30,6 @@ struct Vertex {
     float r, g, b, a;
 };
 
-struct TreeInstance {
-    float x, y, z;  // Posición
-    float scale;    // Escala del árbol
-    float r, g, b;  // Color (afectado por luz/niebla)
-};
-
 void initCudaMemory();
 void cleanupCudaMemory();
 void runCudaKernel(Vertex* host_ptr, TerrainParams params);
-void runTreeKernel(TreeInstance* host_trees, int* tree_count, TerrainParams params);

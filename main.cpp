@@ -14,9 +14,6 @@ GLuint vbo, ibo;
 std::vector<Vertex> host_buffer;
 std::vector<unsigned int> indices;
 
-std::vector<TreeInstance> tree_instances;
-int tree_count = 0;
-
 TerrainParams params;
 float camAngleY = 0.0f;
 float camZoom = -1.8f;
@@ -53,76 +50,6 @@ void generateIndices() {
             indices.push_back(bottomRight);
         }
     }
-}
-
-// Generar geometría de un árbol simple
-void drawTree(const TreeInstance& tree, const TerrainParams& params) {
-    float height = 0.06f * tree.scale;
-    float trunkHeight = height * 0.3f;
-    float trunkRadius = height * 0.05f;
-    float canopyHeight = height * 0.7f;
-    float canopyRadius = height * 0.25f;
-    
-    // Calcular niebla para el tronco también
-    float dist = sqrtf(tree.x * tree.x + tree.z * tree.z);
-    float fogFactor = std::max(0.0f, std::min((dist - 0.75f) / 0.5f, 1.0f));
-    
-    // Color del tronco (marrón oscuro base)
-    float tr_trunk_base = 0.4f;
-    float tg_trunk_base = 0.25f;
-    float tb_trunk_base = 0.1f;
-    
-    // Aplicar la misma iluminación que la copa (tree.r/g/b ya tienen la luz aplicada)
-    float lightRatio = (tree.g > 0.01f) ? (tree.g / 0.5f) : 0.3f; // Recuperar intensidad de luz
-    tr_trunk_base *= lightRatio;
-    tg_trunk_base *= lightRatio;
-    tb_trunk_base *= lightRatio;
-    
-    // Aplicar niebla al tronco
-    float tr_trunk = tr_trunk_base * (1.0f - fogFactor) + params.skyColor.x * fogFactor;
-    float tg_trunk = tg_trunk_base * (1.0f - fogFactor) + params.skyColor.y * fogFactor;
-    float tb_trunk = tb_trunk_base * (1.0f - fogFactor) + params.skyColor.z * fogFactor;
-    
-    glPushMatrix();
-    glTranslatef(tree.x, tree.y, tree.z);
-    
-    // TRONCO (cilindro simplificado con quads)
-    glColor3f(tr_trunk, tg_trunk, tb_trunk);
-    glBegin(GL_QUAD_STRIP);
-    int segments = 6;
-    for (int i = 0; i <= segments; i++) {
-        float angle = (i / (float)segments) * 2.0f * 3.14159f;
-        float x = cosf(angle) * trunkRadius;
-        float z = sinf(angle) * trunkRadius;
-        glVertex3f(x, 0.0f, z);
-        glVertex3f(x, trunkHeight, z);
-    }
-    glEnd();
-    
-    // COPA (cono simplificado)
-    glColor3f(tree.r, tree.g, tree.b);
-    glBegin(GL_TRIANGLE_FAN);
-    glVertex3f(0.0f, trunkHeight + canopyHeight, 0.0f); // Punta
-    for (int i = 0; i <= segments; i++) {
-        float angle = (i / (float)segments) * 2.0f * 3.14159f;
-        float x = cosf(angle) * canopyRadius;
-        float z = sinf(angle) * canopyRadius;
-        glVertex3f(x, trunkHeight, z);
-    }
-    glEnd();
-    
-    // Base de la copa
-    glBegin(GL_TRIANGLE_FAN);
-    glVertex3f(0.0f, trunkHeight, 0.0f);
-    for (int i = segments; i >= 0; i--) {
-        float angle = (i / (float)segments) * 2.0f * 3.14159f;
-        float x = cosf(angle) * canopyRadius;
-        float z = sinf(angle) * canopyRadius;
-        glVertex3f(x, trunkHeight, z);
-    }
-    glEnd();
-    
-    glPopMatrix();
 }
 
 void initGL() {
@@ -163,15 +90,13 @@ int main() {
     initGL();
     initCudaMemory();
     host_buffer.resize(NUM_TERRAIN_POINTS);
-    tree_instances.resize(MAX_TREES);
 
     params.globalX = 0.0f;
     params.globalZ = 0.0f;
     
     params.waterLevel = -0.350f;
-    // --- CAMBIO: Aumentar escala y altura inicial ---
-    params.scale = 2.133f;       // Antes 2.133f
-    params.heightMult = 0.913f; // Antes 0.913f
+    params.scale = 2.133f;
+    params.heightMult = 0.913f;
     params.octaves = 8;
     
     params.time = 3.14159f;
@@ -213,7 +138,6 @@ int main() {
 
         ImGui::Begin("Panel de Control");
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-        ImGui::Text("Arboles: %d", tree_count);
         
         if (ImGui::CollapsingHeader("Atmosfera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Velocidad Dia", &daySpeed, 0.0f, 2.0f);
@@ -230,8 +154,7 @@ int main() {
         
         if (ImGui::CollapsingHeader("Terreno", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Nivel Agua", &params.waterLevel, -1.0f, 1.0f);
-            // --- CAMBIO: Aumentar rango del slider de altura ---
-            ImGui::SliderFloat("Altura Montana", &params.heightMult, 0.1f, 6.0f); // Antes max 3.0f
+            ImGui::SliderFloat("Altura Montana", &params.heightMult, 0.1f, 3.0f);
             ImGui::SliderFloat("Zoom (Escala)", &params.scale, 1.0f, 10.0f);
             ImGui::SliderInt("Detalle", &params.octaves, 1, 8);
         }
@@ -251,9 +174,8 @@ int main() {
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) params.globalX += speed;
         if (autoRotate) camAngleY += 0.1f;
 
-        // Ejecutar kernels CUDA
+        // Ejecutar kernel CUDA
         runCudaKernel(host_buffer.data(), params);
-        runTreeKernel(tree_instances.data(), &tree_count, params);
 
         // Actualizar VBO del terreno
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -288,12 +210,6 @@ int main() {
         glDisableClientState(GL_COLOR_ARRAY);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-        // Renderizar árboles
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        for (int i = 0; i < tree_count; i++) {
-            drawTree(tree_instances[i], params);
-        }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
