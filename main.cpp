@@ -148,7 +148,7 @@ void initGL() {
 
 int main() {
     if (!glfwInit()) return -1;
-    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno 3D con Árboles", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno 3D", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
@@ -169,8 +169,9 @@ int main() {
     params.globalZ = 0.0f;
     
     params.waterLevel = -0.350f;
-    params.scale = 2.133f;
-    params.heightMult = 0.913f;
+    // --- CAMBIO: Aumentar escala y altura inicial ---
+    params.scale = 2.133f;       // Antes 2.133f
+    params.heightMult = 0.913f; // Antes 0.913f
     params.octaves = 8;
     
     params.time = 3.14159f;
@@ -229,7 +230,8 @@ int main() {
         
         if (ImGui::CollapsingHeader("Terreno", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Nivel Agua", &params.waterLevel, -1.0f, 1.0f);
-            ImGui::SliderFloat("Altura Montana", &params.heightMult, 0.1f, 3.0f);
+            // --- CAMBIO: Aumentar rango del slider de altura ---
+            ImGui::SliderFloat("Altura Montana", &params.heightMult, 0.1f, 6.0f); // Antes max 3.0f
             ImGui::SliderFloat("Zoom (Escala)", &params.scale, 1.0f, 10.0f);
             ImGui::SliderInt("Detalle", &params.octaves, 1, 8);
         }

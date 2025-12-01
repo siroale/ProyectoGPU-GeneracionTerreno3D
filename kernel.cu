@@ -122,10 +122,27 @@ __global__ void terrain_kernel(Vertex* vertices, unsigned int width, unsigned in
             lightIntensity = 0.8f + diff * 0.4f;
         } else {
             float hRel = clamp((finalY - p.waterLevel) / (p.heightMult - p.waterLevel), 0.0f, 1.0f);
-            if (hRel < 0.05f) { r=0.8f; g=0.75f; b=0.5f; }
-            else if (hRel > 0.75f) { r=0.95f; g=0.95f; b=1.0f; }
+            
+            // 1. PLAYA
+            if (hRel < 0.05f) { 
+                r=0.8f; g=0.75f; b=0.5f; 
+            }
+            // 2. NIEVE
+            else if (hRel > 0.55f) { 
+                r=0.95f; g=0.95f; b=1.0f; 
+            }
+            // 3. ROCA 
+            else if (hRel > 0.35f) {
+                // Color grisáceo/oscuro para la roca
+                r=0.35f; g=0.35f; b=0.38f; 
+                
+                // Opcional: Añadir un poco de ruido para textura de piedra
+                float noiseRock = hash(worldX * 10.0f, worldZ * 10.0f); 
+                r += noiseRock * 0.05f; g += noiseRock * 0.05f; b += noiseRock * 0.05f;
+            }
+            // 4. VEGETACIÓN (Pasto y Tierra)
             else {
-                if (humidity < 0.45f) { r=0.6f; g=0.5f; b=0.3f; }
+                if (humidity < 0.15f) { r=0.6f; g=0.5f; b=0.3f; }
                 else { r=0.1f; g=0.5f; b=0.1f; }
             }
         }
@@ -169,35 +186,33 @@ __global__ void tree_kernel(TreeInstance* trees, int* count, unsigned int width,
         bool isWater = finalY < p.waterLevel;
         
         float hRel = clamp((finalY - p.waterLevel) / (p.heightMult - p.waterLevel), 0.0f, 1.0f);
-        bool canHaveTree = !isWater && hRel >= 0.05f && hRel <= 0.75f && humidity >= 0.45f;
+        
+        // Ajustamos la lógica de árboles para que no salgan en la roca ni nieve
+        // Antes era <= 0.75f, ahora lo bajamos un poco para evitar la zona rocosa
+        bool canHaveTree = !isWater && hRel >= 0.05f && hRel <= 0.30f && humidity >= 0.45f;
 
         float treeProb = hash(worldX * 60.0f, worldZ * 60.0f);
         
         if (canHaveTree && treeProb > 0.985f) {
             int idx = atomicAdd(count, 1);
             if (idx < MAX_TREES) {
-                // Calcular iluminación para el árbol (más pronunciada que el terreno)
                 float3 normal = {0.0f, 1.0f, 0.0f};
                 float diff = fmaxf(dot(normal, p.sunDir), 0.0f);
                 float shadowVal = calculateShadow({worldX, finalY, worldZ}, p.sunDir, p);
                 
-                // Iluminación más contrastada para árboles (más ambient light)
-                float ambient = 0.25f; // Más luz ambiente que el terreno
+                float ambient = 0.25f; 
                 float lightIntensity = clamp(ambient + diff * shadowVal * 1.2f, 0.0f, 1.0f);
                 
-                // Color verde del árbol con iluminación más visible
                 float tr = 0.15f * lightIntensity;
-                float tg = 0.6f * lightIntensity;  // Verde más saturado
+                float tg = 0.6f * lightIntensity;  
                 float tb = 0.15f * lightIntensity;
                 
-                // Aplicar niebla
                 float dist = sqrtf(cx*cx + cy*cy);
                 float fogFactor = clamp((dist - 0.75f) / 0.5f, 0.0f, 1.0f);
                 tr = lerp(tr, p.skyColor.x, fogFactor);
                 tg = lerp(tg, p.skyColor.y, fogFactor);
                 tb = lerp(tb, p.skyColor.z, fogFactor);
                 
-                // Escala aleatoria para variedad
                 float treeScale = 0.8f + hash(worldX * 123.4f, worldZ * 567.8f) * 0.4f;
                 
                 trees[idx] = {cx, finalY, cy, treeScale, tr, tg, tb};
@@ -230,16 +245,13 @@ void runCudaKernel(Vertex* host_ptr, TerrainParams params) {
 void runTreeKernel(TreeInstance* host_trees, int* tree_count, TerrainParams params) {
     if (!d_trees || !d_tree_count) return;
     
-    // Resetear el contador
     int zero = 0;
     cudaMemcpy(d_tree_count, &zero, sizeof(int), cudaMemcpyHostToDevice);
     
-    // Ejecutar kernel de árboles
     dim3 b(16, 16);
     dim3 g((MESH_WIDTH + b.x - 1) / b.x, (MESH_HEIGHT + b.y - 1) / b.y);
     tree_kernel<<<g, b>>>(d_trees, d_tree_count, MESH_WIDTH, MESH_HEIGHT, params);
     
-    // Copiar resultados
     cudaMemcpy(tree_count, d_tree_count, sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(host_trees, d_trees, (*tree_count) * sizeof(TreeInstance), cudaMemcpyDeviceToHost);
 }
