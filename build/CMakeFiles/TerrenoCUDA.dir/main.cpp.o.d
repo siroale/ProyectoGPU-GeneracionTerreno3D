@@ -195,25 +195,10 @@ CMakeFiles/TerrenoCUDA.dir/main.cpp.o: \
  /usr/include/c++/11/bits/node_handle.h \
  /usr/include/c++/11/bits/unordered_map.h \
  /usr/include/c++/11/bits/erase_if.h \
- /usr/include/c++/11/pstl/execution_defs.h \
- /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/kernel.h \
- /usr/include/cuda_runtime.h /usr/include/crt/host_config.h \
- /usr/include/builtin_types.h /usr/include/device_types.h \
- /usr/include/crt/host_defines.h /usr/include/driver_types.h \
- /usr/include/vector_types.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/limits.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/syslimits.h \
- /usr/include/limits.h /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
- /usr/include/x86_64-linux-gnu/bits/local_lim.h \
- /usr/include/linux/limits.h \
- /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
- /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
- /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
- /usr/include/surface_types.h /usr/include/texture_types.h \
- /usr/include/library_types.h /usr/include/channel_descriptor.h \
- /usr/include/cuda_runtime_api.h /usr/include/cuda_device_runtime_api.h \
- /usr/include/driver_functions.h /usr/include/vector_functions.h \
- /usr/include/vector_functions.hpp \
+ /usr/include/c++/11/pstl/execution_defs.h /usr/include/c++/11/chrono \
+ /usr/include/c++/11/ratio /usr/include/c++/11/ctime \
+ /usr/include/c++/11/bits/parse_numbers.h \
+ /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/cpu_kernel.h \
  /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/_deps/imgui-src/imgui.h \
  /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/_deps/imgui-src/imconfig.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h /usr/include/string.h \

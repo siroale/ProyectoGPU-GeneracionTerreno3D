@@ -1,6 +1,7 @@
 #pragma once
 
-#include <cuda_runtime.h>
+#include <vector>
+#include <cmath>
 
 #define MESH_WIDTH  512
 #define MESH_HEIGHT 512
@@ -19,9 +20,8 @@ struct TerrainParams {
     float heightMult;
     int   octaves;
     
-    // Parámetros de iluminación
-    float3 sunDir;    
-    float3 skyColor;  
+    struct { float x, y, z; } sunDir;    
+    struct { float x, y, z; } skyColor;  
     int   enableShadows; 
 };
 
@@ -30,6 +30,5 @@ struct Vertex {
     float r, g, b, a;
 };
 
-void initCudaMemory();
-void cleanupCudaMemory();
-void runCudaKernel(Vertex* host_ptr, TerrainParams params);
+// Función principal que corre en CPU
+void generateTerrainCPU(std::vector<Vertex>& vertices, int width, int height, TerrainParams p);

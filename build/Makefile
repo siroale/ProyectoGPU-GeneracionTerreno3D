@@ -297,29 +297,29 @@ _deps/imgui-src/imgui_widgets.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TerrenoCUDA.dir/build.make CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui_widgets.cpp.s
 .PHONY : _deps/imgui-src/imgui_widgets.cpp.s
 
-kernel.o: kernel.cu.o
-.PHONY : kernel.o
+cpu_kernel.o: cpu_kernel.cpp.o
+.PHONY : cpu_kernel.o
 
 # target to build an object file
-kernel.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/TerrenoCUDA.dir/build.make CMakeFiles/TerrenoCUDA.dir/kernel.cu.o
-.PHONY : kernel.cu.o
+cpu_kernel.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TerrenoCUDA.dir/build.make CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o
+.PHONY : cpu_kernel.cpp.o
 
-kernel.i: kernel.cu.i
-.PHONY : kernel.i
+cpu_kernel.i: cpu_kernel.cpp.i
+.PHONY : cpu_kernel.i
 
 # target to preprocess a source file
-kernel.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/TerrenoCUDA.dir/build.make CMakeFiles/TerrenoCUDA.dir/kernel.cu.i
-.PHONY : kernel.cu.i
+cpu_kernel.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TerrenoCUDA.dir/build.make CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.i
+.PHONY : cpu_kernel.cpp.i
 
-kernel.s: kernel.cu.s
-.PHONY : kernel.s
+cpu_kernel.s: cpu_kernel.cpp.s
+.PHONY : cpu_kernel.s
 
 # target to generate assembly for a file
-kernel.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/TerrenoCUDA.dir/build.make CMakeFiles/TerrenoCUDA.dir/kernel.cu.s
-.PHONY : kernel.cu.s
+cpu_kernel.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TerrenoCUDA.dir/build.make CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.s
+.PHONY : cpu_kernel.cpp.s
 
 main.o: main.cpp.o
 .PHONY : main.o
@@ -375,9 +375,9 @@ help:
 	@echo "... _deps/imgui-src/imgui_widgets.o"
 	@echo "... _deps/imgui-src/imgui_widgets.i"
 	@echo "... _deps/imgui-src/imgui_widgets.s"
-	@echo "... kernel.o"
-	@echo "... kernel.i"
-	@echo "... kernel.s"
+	@echo "... cpu_kernel.o"
+	@echo "... cpu_kernel.i"
+	@echo "... cpu_kernel.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

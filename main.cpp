@@ -4,7 +4,10 @@
 #include <vector>
 #include <cmath>
 #include <algorithm> 
-#include "kernel.h"
+#include <chrono> // Para medir el tiempo
+
+// Incluimos la version CPU en vez de la GPU
+#include "cpu_kernel.h"
 
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
@@ -21,14 +24,8 @@ bool autoRotate = true;
 float daySpeed = 0.0f; 
 bool wireframeMode = false;
 
-float3 lerpColor(float3 a, float3 b, float t) {
-    t = std::max(0.0f, std::min(t, 1.0f)); 
-    return {
-        a.x + (b.x - a.x) * t,
-        a.y + (b.y - a.y) * t,
-        a.z + (b.z - a.z) * t
-    };
-}
+// Variable para guardar el tiempo de CPU
+float cpuTimeMs = 0.0f;
 
 void generateIndices() {
     indices.clear();
@@ -75,10 +72,11 @@ void initGL() {
 
 int main() {
     if (!glfwInit()) return -1;
-    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno 3D", NULL, NULL);
+    // Cambiamos el título
+    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno 3D - VERSION CPU (Lenta)", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    glfwSwapInterval(0); // Desactivar VSync para ver los FPS reales (bajos)
     if (glewInit() != GLEW_OK) return -1;
 
     IMGUI_CHECKVERSION();
@@ -88,7 +86,8 @@ int main() {
     ImGui_ImplOpenGL3_Init("#version 130");
 
     initGL();
-    initCudaMemory();
+    // Ya no hay initCudaMemory()
+    
     host_buffer.resize(NUM_TERRAIN_POINTS);
 
     params.globalX = 0.0f;
@@ -106,9 +105,9 @@ int main() {
     autoRotate = true;
     camZoom = -1.330f;
 
-    float3 colNight  = {0.40f, 0.70f, 0.90f};
-    float3 colSunset = {0.40f, 0.70f, 0.90f}; 
-    float3 colDay    = {0.40f, 0.70f, 0.90f};
+    float colNight[3]  = {0.40f, 0.70f, 0.90f};
+    float colSunset[3] = {0.40f, 0.70f, 0.90f}; 
+    float colDay[3]    = {0.40f, 0.70f, 0.90f};
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -121,49 +120,49 @@ int main() {
         params.sunDir.z = 0.2f;
 
         float sunHeight = params.sunDir.y;
-        float3 currentSky;
-
+        
+        // Lerp simple para el cielo en main
+        float t = std::max(0.0f, std::min(sunHeight * 1.5f, 1.0f));
         if (sunHeight > 0.0f) {
-            currentSky = lerpColor(colSunset, colDay, sunHeight * 1.5f);
+             params.skyColor.x = colSunset[0] + (colDay[0] - colSunset[0]) * t;
+             params.skyColor.y = colSunset[1] + (colDay[1] - colSunset[1]) * t;
+             params.skyColor.z = colSunset[2] + (colDay[2] - colSunset[2]) * t;
         } else {
-            currentSky = lerpColor(colSunset, colNight, -sunHeight * 3.0f);
+             t = std::max(0.0f, std::min(-sunHeight * 3.0f, 1.0f));
+             params.skyColor.x = colSunset[0] + (colNight[0] - colSunset[0]) * t;
+             params.skyColor.y = colSunset[1] + (colNight[1] - colSunset[1]) * t;
+             params.skyColor.z = colSunset[2] + (colNight[2] - colSunset[2]) * t;
         }
 
-        params.skyColor = currentSky;
-        glClearColor(currentSky.x, currentSky.y, currentSky.z, 1.0f);
+        glClearColor(params.skyColor.x, params.skyColor.y, params.skyColor.z, 1.0f);
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Panel de Control");
+        ImGui::Begin("Benchmark CPU");
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        
+        // MOSTRAR TIEMPO DE CPU EN ROJO
+        ImGui::TextColored(ImVec4(1,0,0,1), "Tiempo Generacion CPU: %.2f ms", cpuTimeMs);
+        ImGui::Text("Puntos totales: %d", NUM_TERRAIN_POINTS);
         
         if (ImGui::CollapsingHeader("Atmosfera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Velocidad Dia", &daySpeed, 0.0f, 2.0f);
-            
-            float hour = fmod(params.time, 6.2831f) / 6.2831f * 24.0f;
-            if (hour < 0) hour += 24.0f;
-            ImGui::Text("Hora Virtual: %.1f h", hour);
-            
-            ImGui::Checkbox("Sombras Dinamicas", (bool*)&params.enableShadows);
-            ImGui::ColorEdit3("Color Dia", (float*)&colDay);
-            ImGui::ColorEdit3("Color Atardecer", (float*)&colSunset);
-            ImGui::ColorEdit3("Color Noche", (float*)&colNight);
+            ImGui::Checkbox("Sombras Dinamicas (Lento)", (bool*)&params.enableShadows);
         }
         
         if (ImGui::CollapsingHeader("Terreno", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Nivel Agua", &params.waterLevel, -1.0f, 1.0f);
             ImGui::SliderFloat("Altura Montana", &params.heightMult, 0.1f, 3.0f);
             ImGui::SliderFloat("Zoom (Escala)", &params.scale, 1.0f, 10.0f);
-            ImGui::SliderInt("Detalle", &params.octaves, 1, 8);
+            ImGui::SliderInt("Detalle (Costoso)", &params.octaves, 1, 8);
         }
 
         if (ImGui::CollapsingHeader("Navegacion", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Checkbox("Auto-Giro", &autoRotate);
             ImGui::SliderFloat("Zoom Camara", &camZoom, -5.0f, -0.1f);
             ImGui::Checkbox("Modo Wireframe", &wireframeMode);
-            if (ImGui::Button("Reestablecer Posicion")) { params.globalX = 0; params.globalZ = 0; }
         }
         ImGui::End();
 
@@ -174,8 +173,16 @@ int main() {
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) params.globalX += speed;
         if (autoRotate) camAngleY += 0.1f;
 
-        // Ejecutar kernel CUDA
-        runCudaKernel(host_buffer.data(), params);
+        // --- BENCHMARK START ---
+        auto start = std::chrono::high_resolution_clock::now();
+        
+        // Ejecutar Generación en CPU
+        generateTerrainCPU(host_buffer, MESH_WIDTH, MESH_HEIGHT, params);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float, std::milli> duration = end - start;
+        cpuTimeMs = duration.count();
+        // --- BENCHMARK END ---
 
         // Actualizar VBO del terreno
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -220,7 +227,7 @@ int main() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    cleanupCudaMemory();
+    // cleanupCudaMemory() ya no es necesario
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &ibo);
     glfwTerminate();

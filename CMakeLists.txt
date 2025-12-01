@@ -34,7 +34,7 @@ set(IMGUI_SOURCES
 # --- TU PROYECTO ---
 set(SOURCES 
     main.cpp
-    kernel.cu
+    cpu_kernel.cpp
     ${IMGUI_SOURCES} # Agregamos ImGui a tu ejecutable
 )
 

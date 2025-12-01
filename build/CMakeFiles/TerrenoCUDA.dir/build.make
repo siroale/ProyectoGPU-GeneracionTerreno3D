@@ -83,19 +83,19 @@ CMakeFiles/TerrenoCUDA.dir/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/TerrenoCUDA.dir/main.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/main.cpp -o CMakeFiles/TerrenoCUDA.dir/main.cpp.s
 
-CMakeFiles/TerrenoCUDA.dir/kernel.cu.o: CMakeFiles/TerrenoCUDA.dir/flags.make
-CMakeFiles/TerrenoCUDA.dir/kernel.cu.o: ../kernel.cu
-CMakeFiles/TerrenoCUDA.dir/kernel.cu.o: CMakeFiles/TerrenoCUDA.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/TerrenoCUDA.dir/kernel.cu.o"
-	/usr/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/TerrenoCUDA.dir/kernel.cu.o -MF CMakeFiles/TerrenoCUDA.dir/kernel.cu.o.d -x cu -c /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/kernel.cu -o CMakeFiles/TerrenoCUDA.dir/kernel.cu.o
+CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o: CMakeFiles/TerrenoCUDA.dir/flags.make
+CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o: ../cpu_kernel.cpp
+CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o: CMakeFiles/TerrenoCUDA.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ale/Github/ProyectoGPU-GeneracionTerreno3D/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o -MF CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o.d -o CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o -c /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/cpu_kernel.cpp
 
-CMakeFiles/TerrenoCUDA.dir/kernel.cu.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/TerrenoCUDA.dir/kernel.cu.i"
-	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_PREPROCESSED_SOURCE
+CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/cpu_kernel.cpp > CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.i
 
-CMakeFiles/TerrenoCUDA.dir/kernel.cu.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CUDA source to assembly CMakeFiles/TerrenoCUDA.dir/kernel.cu.s"
-	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE
+CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ale/Github/ProyectoGPU-GeneracionTerreno3D/cpu_kernel.cpp -o CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.s
 
 CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui.cpp.o: CMakeFiles/TerrenoCUDA.dir/flags.make
 CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui.cpp.o: _deps/imgui-src/imgui.cpp
@@ -198,7 +198,7 @@ CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/backends/imgui_impl_opengl3.cpp.s: cm
 # Object files for target TerrenoCUDA
 TerrenoCUDA_OBJECTS = \
 "CMakeFiles/TerrenoCUDA.dir/main.cpp.o" \
-"CMakeFiles/TerrenoCUDA.dir/kernel.cu.o" \
+"CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o" \
 "CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui.cpp.o" \
 "CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui_draw.cpp.o" \
 "CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui_tables.cpp.o" \
@@ -211,7 +211,7 @@ TerrenoCUDA_OBJECTS = \
 TerrenoCUDA_EXTERNAL_OBJECTS =
 
 TerrenoCUDA: CMakeFiles/TerrenoCUDA.dir/main.cpp.o
-TerrenoCUDA: CMakeFiles/TerrenoCUDA.dir/kernel.cu.o
+TerrenoCUDA: CMakeFiles/TerrenoCUDA.dir/cpu_kernel.cpp.o
 TerrenoCUDA: CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui.cpp.o
 TerrenoCUDA: CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui_draw.cpp.o
 TerrenoCUDA: CMakeFiles/TerrenoCUDA.dir/_deps/imgui-src/imgui_tables.cpp.o
