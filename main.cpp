@@ -6,16 +6,17 @@
 #include <algorithm> 
 #include "kernel.h"
 
-// ImGui
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 
-GLuint vbo, ibo, treeVbo;
+GLuint vbo, ibo;
 std::vector<Vertex> host_buffer;
 std::vector<unsigned int> indices;
 
-// Variables Globales
+std::vector<TreeInstance> tree_instances;
+int tree_count = 0;
+
 TerrainParams params;
 float camAngleY = 0.0f;
 float camZoom = -1.8f;
@@ -23,7 +24,6 @@ bool autoRotate = true;
 float daySpeed = 0.0f; 
 bool wireframeMode = false;
 
-// --- FUNCIÓN AUXILIAR PARA MEZCLAR COLORES (LERP) ---
 float3 lerpColor(float3 a, float3 b, float t) {
     t = std::max(0.0f, std::min(t, 1.0f)); 
     return {
@@ -37,7 +37,6 @@ void generateIndices() {
     indices.clear();
     indices.reserve(NUM_INDICES);
     
-    // Generamos índices para formar quads con 2 triángulos cada uno
     for (unsigned int y = 0; y < MESH_HEIGHT - 1; y++) {
         for (unsigned int x = 0; x < MESH_WIDTH - 1; x++) {
             unsigned int topLeft = y * MESH_WIDTH + x;
@@ -45,12 +44,10 @@ void generateIndices() {
             unsigned int bottomLeft = (y + 1) * MESH_WIDTH + x;
             unsigned int bottomRight = bottomLeft + 1;
             
-            // Primer triángulo (superior izquierdo)
             indices.push_back(topLeft);
             indices.push_back(bottomLeft);
             indices.push_back(topRight);
             
-            // Segundo triángulo (inferior derecho)
             indices.push_back(topRight);
             indices.push_back(bottomLeft);
             indices.push_back(bottomRight);
@@ -58,25 +55,87 @@ void generateIndices() {
     }
 }
 
+// Generar geometría de un árbol simple
+void drawTree(const TreeInstance& tree, const TerrainParams& params) {
+    float height = 0.06f * tree.scale;
+    float trunkHeight = height * 0.3f;
+    float trunkRadius = height * 0.05f;
+    float canopyHeight = height * 0.7f;
+    float canopyRadius = height * 0.25f;
+    
+    // Calcular niebla para el tronco también
+    float dist = sqrtf(tree.x * tree.x + tree.z * tree.z);
+    float fogFactor = std::max(0.0f, std::min((dist - 0.75f) / 0.5f, 1.0f));
+    
+    // Color del tronco (marrón oscuro base)
+    float tr_trunk_base = 0.4f;
+    float tg_trunk_base = 0.25f;
+    float tb_trunk_base = 0.1f;
+    
+    // Aplicar la misma iluminación que la copa (tree.r/g/b ya tienen la luz aplicada)
+    float lightRatio = (tree.g > 0.01f) ? (tree.g / 0.5f) : 0.3f; // Recuperar intensidad de luz
+    tr_trunk_base *= lightRatio;
+    tg_trunk_base *= lightRatio;
+    tb_trunk_base *= lightRatio;
+    
+    // Aplicar niebla al tronco
+    float tr_trunk = tr_trunk_base * (1.0f - fogFactor) + params.skyColor.x * fogFactor;
+    float tg_trunk = tg_trunk_base * (1.0f - fogFactor) + params.skyColor.y * fogFactor;
+    float tb_trunk = tb_trunk_base * (1.0f - fogFactor) + params.skyColor.z * fogFactor;
+    
+    glPushMatrix();
+    glTranslatef(tree.x, tree.y, tree.z);
+    
+    // TRONCO (cilindro simplificado con quads)
+    glColor3f(tr_trunk, tg_trunk, tb_trunk);
+    glBegin(GL_QUAD_STRIP);
+    int segments = 6;
+    for (int i = 0; i <= segments; i++) {
+        float angle = (i / (float)segments) * 2.0f * 3.14159f;
+        float x = cosf(angle) * trunkRadius;
+        float z = sinf(angle) * trunkRadius;
+        glVertex3f(x, 0.0f, z);
+        glVertex3f(x, trunkHeight, z);
+    }
+    glEnd();
+    
+    // COPA (cono simplificado)
+    glColor3f(tree.r, tree.g, tree.b);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex3f(0.0f, trunkHeight + canopyHeight, 0.0f); // Punta
+    for (int i = 0; i <= segments; i++) {
+        float angle = (i / (float)segments) * 2.0f * 3.14159f;
+        float x = cosf(angle) * canopyRadius;
+        float z = sinf(angle) * canopyRadius;
+        glVertex3f(x, trunkHeight, z);
+    }
+    glEnd();
+    
+    // Base de la copa
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex3f(0.0f, trunkHeight, 0.0f);
+    for (int i = segments; i >= 0; i--) {
+        float angle = (i / (float)segments) * 2.0f * 3.14159f;
+        float x = cosf(angle) * canopyRadius;
+        float z = sinf(angle) * canopyRadius;
+        glVertex3f(x, trunkHeight, z);
+    }
+    glEnd();
+    
+    glPopMatrix();
+}
+
 void initGL() {
-    // VBO para terreno
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     unsigned int size = NUM_TERRAIN_POINTS * sizeof(Vertex);
     glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
     
-    // IBO para índices
     generateIndices();
     glGenBuffers(1, &ibo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), 
                  indices.data(), GL_STATIC_DRAW);
-    
-    // VBO para árboles (siguen siendo puntos)
-    glGenBuffers(1, &treeVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, treeVbo);
-    size = NUM_TERRAIN_POINTS * sizeof(Vertex);
-    glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -84,17 +143,17 @@ void initGL() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST); 
+    glEnable(GL_CULL_FACE);
 }
 
 int main() {
     if (!glfwInit()) return -1;
-    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno Pro - Malla de Triángulos", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 800, "Terreno 3D con Árboles", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
     if (glewInit() != GLEW_OK) return -1;
 
-    // Setup ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
@@ -103,7 +162,8 @@ int main() {
 
     initGL();
     initCudaMemory();
-    host_buffer.resize(TOTAL_VERTICES);
+    host_buffer.resize(NUM_TERRAIN_POINTS);
+    tree_instances.resize(MAX_TREES);
 
     params.globalX = 0.0f;
     params.globalZ = 0.0f;
@@ -120,7 +180,6 @@ int main() {
     autoRotate = true;
     camZoom = -1.330f;
 
-    // Colores base
     float3 colNight  = {0.40f, 0.70f, 0.90f};
     float3 colSunset = {0.40f, 0.70f, 0.90f}; 
     float3 colDay    = {0.40f, 0.70f, 0.90f};
@@ -130,7 +189,6 @@ int main() {
 
         params.time += daySpeed * 0.01f;
         
-        // Mover el sol
         float sunAngle = params.time;
         params.sunDir.x = cos(sunAngle); 
         params.sunDir.y = sin(sunAngle); 
@@ -148,13 +206,13 @@ int main() {
         params.skyColor = currentSky;
         glClearColor(currentSky.x, currentSky.y, currentSky.z, 1.0f);
 
-        // INTERFAZ 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
         ImGui::Begin("Panel de Control");
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Arboles: %d", tree_count);
         
         if (ImGui::CollapsingHeader("Atmosfera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Velocidad Dia", &daySpeed, 0.0f, 2.0f);
@@ -171,7 +229,7 @@ int main() {
         
         if (ImGui::CollapsingHeader("Terreno", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Nivel Agua", &params.waterLevel, -1.0f, 1.0f);
-            ImGui::SliderFloat("Altura Montaña", &params.heightMult, 0.1f, 3.0f);
+            ImGui::SliderFloat("Altura Montana", &params.heightMult, 0.1f, 3.0f);
             ImGui::SliderFloat("Zoom (Escala)", &params.scale, 1.0f, 10.0f);
             ImGui::SliderInt("Detalle", &params.octaves, 1, 8);
         }
@@ -184,7 +242,6 @@ int main() {
         }
         ImGui::End();
 
-        // MOVIMIENTO
         float speed = 0.03f * params.scale;
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) params.globalZ -= speed;
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) params.globalZ += speed;
@@ -192,17 +249,13 @@ int main() {
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) params.globalX += speed;
         if (autoRotate) camAngleY += 0.1f;
 
-        // RENDER
+        // Ejecutar kernels CUDA
         runCudaKernel(host_buffer.data(), params);
+        runTreeKernel(tree_instances.data(), &tree_count, params);
 
         // Actualizar VBO del terreno
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_TERRAIN_POINTS * sizeof(Vertex), host_buffer.data());
-        
-        // Actualizar VBO de árboles
-        glBindBuffer(GL_ARRAY_BUFFER, treeVbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_TERRAIN_POINTS * sizeof(Vertex), 
-                       host_buffer.data() + NUM_TERRAIN_POINTS);
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -216,7 +269,7 @@ int main() {
         glRotatef(35.0f, 1.0f, 0.0f, 0.0f); 
         glRotatef(camAngleY, 0.0f, 1.0f, 0.0f);
 
-        // Renderizar terreno con triángulos
+        // Renderizar terreno
         glPolygonMode(GL_FRONT_AND_BACK, wireframeMode ? GL_LINE : GL_FILL);
         
         glEnableClientState(GL_VERTEX_ARRAY);
@@ -229,18 +282,16 @@ int main() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         
-        // Renderizar árboles como puntos
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glBindBuffer(GL_ARRAY_BUFFER, treeVbo);
-        glVertexPointer(4, GL_FLOAT, sizeof(Vertex), (void*)0);
-        glColorPointer(4, GL_FLOAT, sizeof(Vertex), (void*)(4 * sizeof(float)));
-        glPointSize(3.0f);
-        glDrawArrays(GL_POINTS, 0, NUM_TERRAIN_POINTS);
-
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_COLOR_ARRAY);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+        // Renderizar árboles
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        for (int i = 0; i < tree_count; i++) {
+            drawTree(tree_instances[i], params);
+        }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -254,7 +305,6 @@ int main() {
     cleanupCudaMemory();
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &ibo);
-    glDeleteBuffers(1, &treeVbo);
     glfwTerminate();
     return 0;
 }
